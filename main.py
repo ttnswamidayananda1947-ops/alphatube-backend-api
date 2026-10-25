@@ -12,7 +12,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ஹேக்கர்கள் எடுக்க முடியாத உங்களின் ரகசிய API Key
 SECRET_API_KEY = "AlphaTube_Secure_Key_2026"
 
 @app.get("/")
@@ -21,16 +20,18 @@ def home():
 
 @app.get("/extract")
 def extract_media(url: str, x_api_key: str = Header(None)):
-    # API Key சரியாக இருக்கிறதா என்று செக் செய்யும் லாஜிக்
     if x_api_key != SECRET_API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid API Key")
 
     try:
+        # YouTube பிளாக்கிங்கைத் தவிர்க்கும் செட்டிங்ஸ் மட்டும் சேர்க்கப்பட்டுள்ளது
         ydl_opts = {
             'format': 'best',
             'quiet': True,
             'no_warnings': True,
             'skip_download': True,
+            'nocheckcertificate': True,
+            'extractor_args': {'youtube': {'player_client': ['android', 'web']}}
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -47,6 +48,9 @@ def extract_media(url: str, x_api_key: str = Header(None)):
                         video_url = f.get('url')
                         break
                         
+            if not video_url:
+                 raise Exception("Could not extract direct video link")
+
             return {
                 "status": "success",
                 "title": title,
