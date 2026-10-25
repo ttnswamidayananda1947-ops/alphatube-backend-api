@@ -1,10 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 import yt_dlp
 
 app = FastAPI()
 
-# ஆப் எரர் இல்லாமல் கம்யூனிகேட் செய்ய CORS அனுமதி
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,19 +12,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ஹேக்கர்கள் எடுக்க முடியாத உங்களின் ரகசிய API Key
+SECRET_API_KEY = "AlphaTube_Secure_Key_2026"
+
 @app.get("/")
 def home():
-    return {"message": "AlphaTube API is successfully running!"}
+    return {"message": "AlphaTube Secure API is running!"}
 
 @app.get("/extract")
-def extract_media(url: str):
+def extract_media(url: str, x_api_key: str = Header(None)):
+    # API Key சரியாக இருக்கிறதா என்று செக் செய்யும் லாஜிக்
+    if x_api_key != SECRET_API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid API Key")
+
     try:
-        # எந்த வெப்சைட்டாக இருந்தாலும் சிறந்த குவாலிட்டி லிங்கை எடுக்க yt-dlp செட்டிங்ஸ்
         ydl_opts = {
-            'format': 'best', # சிறந்த வீடியோ/ஆடியோ குவாலிட்டி
+            'format': 'best',
             'quiet': True,
             'no_warnings': True,
-            'skip_download': True, # டவுன்லோட் செய்யாமல் லிங்கை மட்டும் எடுக்கும்
+            'skip_download': True,
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -34,10 +39,8 @@ def extract_media(url: str):
             title = info.get('title', 'AlphaTube_Video')
             thumbnail = info.get('thumbnail', '')
             
-            # நேரடியான MP4 லிங்கை எடுப்பது
             video_url = info.get('url', '')
             
-            # சில நேரங்களில் URL நேரடியாக இருக்காது, அப்போது formats-ல் இருந்து எடுக்க வேண்டும்
             if not video_url and 'formats' in info:
                 for f in info['formats'][::-1]:
                     if f.get('vcodec') != 'none' and f.get('acodec') != 'none':
@@ -48,10 +51,9 @@ def extract_media(url: str):
                 "status": "success",
                 "title": title,
                 "thumbnail": thumbnail,
-                "download_url": video_url, # இதுதான் உண்மையான Direct MP4 லிங்க்
+                "download_url": video_url,
                 "original_url": url
             }
             
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-              
